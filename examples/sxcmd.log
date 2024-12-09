@@ -1,0 +1,45 @@
+### Custom WaveView ADV log file, revision O-2018.09-SP2  (build 190227) ###
+### created at 21:36:32 on Mon Dec  9 2024 (Windows) ###
+### Host Name: ITX-WORKSTATION   User ID:    ###
+wv_start_log
+# (0) running in waveview only mode
+# (0) SW_SX_TCL_LIB is not defined, use tcl lib in package
+sx_open_sim_file_read {D:/Source/ZSpice/examples/output/top.tr0}
+wv_move_window {Custom WaveView} {} -11 -11
+wv_resize_browser {Custom WaveView} {} {WV.Browser} 250 1911
+wv_resize_browser {Custom WaveView} {} {waveview 1:1} 3578 1882
+wv_resize_window {Custom WaveView} 3840 2054
+wv_expand_tree_item {Custom WaveView} {} {hierview} {D0:top.tr0(0)} {+sep=@}
+wv_select_tree_item {Custom WaveView} {} {hierview} {D0:top.tr0(0)@toplevel(0)} {0} {+sep=@}
+wv_select_list_item {Custom WaveView} {} {sigview} {v(a_0)} 11
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(a_0)} 11
+wv_select_list_item {Custom WaveView} {} {sigview} {v(a_1)} 12
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(a_1)} 12
+wv_select_list_item {Custom WaveView} {} {sigview} {v(a_2)} 13
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(a_2)} 13
+wv_select_list_item {Custom WaveView} {} {sigview} {v(a_3)} 14
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(a_3)} 14
+wv_select_list_item {Custom WaveView} {} {sigview} {v(b_0)} 15
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(b_0)} 15
+wv_select_list_item {Custom WaveView} {} {sigview} {v(b_1)} 16
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(b_1)} 16
+wv_select_list_item {Custom WaveView} {} {sigview} {v(b_2)} 17
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(b_2)} 17
+wv_select_list_item {Custom WaveView} {} {sigview} {v(b_3)} 18
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(b_3)} 18
+wv_select_list_item {Custom WaveView} {} {sigview} {v(cin)} 19
+wv_drag_list_item {Custom WaveView} {} {sigview} {v(cin)} 19
+wv_select_list_item {Custom WaveView} {} {sigview} {v(cin)} 19
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(cin)} 19
+wv_select_list_item {Custom WaveView} {} {sigview} {v(sum_0)} 21
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(sum_0)} 21
+wv_select_list_item {Custom WaveView} {} {sigview} {v(sum_1)} 22
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(sum_1)} 22
+wv_select_list_item {Custom WaveView} {} {sigview} {v(sum_2)} 23
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(sum_2)} 23
+wv_select_list_item {Custom WaveView} {} {sigview} {v(sum_3)} 24
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(sum_3)} 24
+wv_select_list_item {Custom WaveView} {} {sigview} {v(cout)} 20
+wv_dclick_list_item {Custom WaveView} {} {sigview} {v(cout)} 20
+wv_press_key Shift_" 1450 1649
+wv_select_window {Custom WaveView} 

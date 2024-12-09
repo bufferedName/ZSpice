@@ -1,0 +1,12 @@
+.SUBCKT XOR in1 in2 out
+XINV_1 GND in1 in1_n INV
+XINV_2 GND in2 in2_n INV
+Mp1 buf1 in1 VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp2 out in2_n buf1 buf1 PMOS_3P3 L=LP W=2*WP
+Mp3 buf2 in1_n VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp4 out in2 buf2 buf2 PMOS_3P3 L=LP W=2*WP
+Mn1 out in1 buf3 buf3 NMOS_3P3 L=LN W=2*WN
+Mn2 out in2_n buf3 buf3 NMOS_3P3 L=LN W=2*WN
+Mn3 buf3 in1_n GND GND NMOS_3P3 L=LN W=2*WN
+Mn4 buf3 in2 GND GND NMOS_3P3 L=LN W=2*WN
+.ENDS XOR

@@ -1,0 +1,4 @@
+.SUBCKT INV nc in out
+Mp out in VDD VDD PMOS_3P3 L=LP W=WP
+Mn out in GND GND NMOS_3P3 L=LN W=WN
+.ENDS INV

@@ -1,0 +1,15 @@
+.SUBCKT MUX in1 in2 sel out
+XINV GND sel nsel INV
+Mp1 out1 in1 VDD VDD PMOS_3P3 L=LP W=WP
+Mp2 out1 sel VDD VDD PMOS_3P3 L=LP W=WP
+Mn1 out1 in1 buf1 buf1 NMOS_3P3 L=LN W=WN
+Mn2 buf1 sel GND GND NMOS_3P3 L=LN W=WN
+Mp3 out2 in2 VDD VDD PMOS_3P3 L=LP W=WP
+Mp4 out2 nsel VDD VDD PMOS_3P3 L=LP W=WP
+Mn3 out2 in2 buf2 buf2 NMOS_3P3 L=LN W=WN
+Mn4 buf2 nsel GND GND NMOS_3P3 L=LN W=WN
+Mp5 out out1 VDD VDD PMOS_3P3 L=LP W=WP
+Mp6 out out2 VDD VDD PMOS_3P3 L=LP W=WP
+Mn5 out out1 buf buf NMOS_3P3 L=LN W=WN
+Mn6 buf out2 GND GND NMOS_3P3 L=LN W=WN
+.ENDS MUX
