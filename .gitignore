@@ -3,3 +3,5 @@ examples/output/top.lis
 examples/output/top.pa0
 examples/output/top.st0
 examples/output/top.tr0
+.vscode
+src/deleteKey.reg
