@@ -94,7 +94,7 @@ $ perl ./src/main.pl ./examples --top top.v -o top.sp --process sm046005-1j.hspi
 
 程序会在输入目录下的`output`文件夹中生成带有激励源的网表文件，激励源会对所有的输入情况进行激励。上述脚本会输出`./examples/output/top.sp`:
 
-```spice
+```sp
 .LIB sm046005-1j.hspice typical
 .OPTION POST
 .PARAM WP=2u WN=1u LN=0.35u LP=0.35u
@@ -279,3 +279,56 @@ $ sudo apt install libanyevent-perl libio-aio-perl && sudo cpan Perl::LanguageSe
 ```bash
 $ sudo install graphviz perl-tk
 ```
+
+## 语法限制
+
+目前仅仅支持RTL级建模，不支持行为级建模。
+
+### 支持的语句
+
+支持的语句和运算符包括：
+
+#### assign
+
+允许对线网与线网总线赋值，允许`~&|^`运算符，暂不支持规约运算，暂不支持`{}`线网连接，暂不支持`?:`三元运算符。
+
+#### module
+
+允许定义模块，定义模块的时候需要声明输入与输出线网与线网总线类型`input|output`，暂不支持`inout`类型和模块内部声明类型。
+
+#### wire
+
+允许定义线网和线网总线。
+
+#### 注释
+
+允许使用//进行注释。
+
+#### 模块例化
+
+允许例化模块，允许例化模块Array，暂不支持generate。
+例化模块需要使用端口名称进行例化，暂不支持根据声明位置进行例化。
+例化连接的端口必须为线网名称与索引，暂不支持表达式。
+
+
+### 后续更新打算，目前暂时不支持
+
+### 规约运算
+
+`^&|`的规约运算
+
+### MUX
+
+`?:`三元运算符
+
+### 复杂总线连接
+
+`{}`连接运算
+
+### 模块声明与例化
+
+按照位置例化，端口为表达式
+
+### 组合逻辑综合
+
+组合逻辑自动综合为静态互补逻辑，而非逻辑门级联
