@@ -1002,32 +1002,34 @@ foreach (@moduleNames) {
 #----------------------------------------------------------#
 
 #------------------TestBench Generation--------------------#
-$logger->info("\nGenerating transient analysis testbench circuit...\n");
-print $outputFileHandler "\n\n";
-my $subckt = "";
-$subckt .= "X_TOP ";
-$subckt .= join( " ", @{ $moduleDeclarations->{$topModuleName}->{input} } );
-$subckt .= " ";
-$subckt .= join( " ", @{ $moduleDeclarations->{$topModuleName}->{output} } );
-$subckt .= " $topModuleName\n";
-print $outputFileHandler $subckt;
-$logger->info( "Sub-circuit for top-module generated as '" . cropStr( $subckt, 15 ) . "'\n" );
+if ($needTestBench) {
+    $logger->info("\nGenerating transient analysis testbench circuit...\n");
+    print $outputFileHandler "\n\n";
+    my $subckt = "";
+    $subckt .= "X_TOP ";
+    $subckt .= join( " ", @{ $moduleDeclarations->{$topModuleName}->{input} } );
+    $subckt .= " ";
+    $subckt .= join( " ", @{ $moduleDeclarations->{$topModuleName}->{output} } );
+    $subckt .= " $topModuleName\n";
+    print $outputFileHandler $subckt;
+    $logger->info( "Sub-circuit for top-module generated as '" . cropStr( $subckt, 15 ) . "'\n" );
 
-foreach ( @{ $moduleDeclarations->{$topModuleName}->{output} } ) {
-    print $outputFileHandler "C_$_ $_ GND $CapacitorLoad\n";
+    foreach ( @{ $moduleDeclarations->{$topModuleName}->{output} } ) {
+        print $outputFileHandler "C_$_ $_ GND $CapacitorLoad\n";
+    }
+    $logger->info("Load Capacitor(s) generated\n");
+    print $outputFileHandler "\n\n";
+    foreach ( @{ $moduleDeclarations->{$topModuleName}->{input} } ) {
+        print $outputFileHandler "V_$_ $_ GND PULSE(0V $voltage";
+        print $outputFileHandler "V $testbenchPulse$timescale 0$timescale 0$timescale $testbenchPulse$timescale ";
+        $testbenchPulse *= 2;
+        print $outputFileHandler "$testbenchPulse$timescale)\n";
+    }
+    $logger->info("Pulse votage source(s) generated\n");
+    print $outputFileHandler "\n\n";
+    print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
+    $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
 }
-$logger->info("Load Capacitor(s) generated\n");
-print $outputFileHandler "\n\n";
-foreach ( @{ $moduleDeclarations->{$topModuleName}->{input} } ) {
-    print $outputFileHandler "V_$_ $_ GND PULSE(0V $voltage";
-    print $outputFileHandler "V $testbenchPulse$timescale 0$timescale 0$timescale $testbenchPulse$timescale ";
-    $testbenchPulse *= 2;
-    print $outputFileHandler "$testbenchPulse$timescale)\n";
-}
-$logger->info("Pulse votage source(s) generated\n");
-print $outputFileHandler "\n\n";
-print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
-$logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
 
 #----------------------------------------------------------#
 
