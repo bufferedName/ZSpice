@@ -44,7 +44,7 @@ my %symbols = (
     '&'  => { name => "AND", priority => 3 },
     '^'  => { name => "XOR", priority => 2 },
     '|'  => { name => "OR",  priority => 1 },
-    '?:' => { name => "MUX" },
+    #'?:' => { name => "MUX" },
 );
 
 #----------------Parsing Command Arguments-----------------#
