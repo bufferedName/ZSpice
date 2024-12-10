@@ -5,6 +5,7 @@ use Getopt::Long;
 use Log::Dispatch;
 use Log::Dispatch::Screen;
 use File::Copy;
+use File::Path  qw(remove_tree);
 use Time::HiRes qw(gettimeofday tv_interval);
 require TreeNode;
 
@@ -40,10 +41,11 @@ my %global_param = (
 );
 
 my %symbols = (
-    '~'  => { name => "INV", priority => 4 },
-    '&'  => { name => "AND", priority => 3 },
-    '^'  => { name => "XOR", priority => 2 },
-    '|'  => { name => "OR",  priority => 1 },
+    '~' => { name => "INV", priority => 4 },
+    '&' => { name => "AND", priority => 3 },
+    '^' => { name => "XOR", priority => 2 },
+    '|' => { name => "OR",  priority => 1 },
+
     #'?:' => { name => "MUX" },
 );
 
@@ -58,6 +60,7 @@ my $timescale;
 my $testbenchStep;
 my $testbenchPulse;
 my $CapacitorLoad;
+my $needClearCache;
 my %options = (
     'verbose|v'       => '\$verbose',
     'output|o=s'      => '\$outputFileName',
@@ -70,6 +73,7 @@ my %options = (
     'tbStep=s'        => '\$testbenchStep',
     'tbPulse=s'       => '\$testbenchPulse',
     'capacitorload=s' => '\$CapacitorLoad',
+    'clearCache'      => '\$needClearCache',
 
 );
 
@@ -199,6 +203,13 @@ $logger->info("Output path:\t$outputFolderName\n");
 $logger->info("Output file:\t$outputFileName\n");
 $logger->info("Process library $processPath/$processName copied into $outputFolderName/$processName\n");
 my $bufferFolderName = "$outputFolderName/tmp";
+if ( -d $bufferFolderName ) {
+    remove_tree( $bufferFolderName, { error => \my $error } );
+    foreach (@$error) {
+        $logger->warning("Unable to delete cache file $error->[0]: $error->[1]\n");
+    }
+    $logger->info("Cache file cleared\n");
+}
 unless ( -d $bufferFolderName ) {
     mkdir $bufferFolderName
       or die "Cannot create folder '$bufferFolderName': $! \n";
@@ -936,9 +947,9 @@ foreach (@moduleNames) {
         $subckt .= $assign;
     }
     while ( $content =~ /(?<moduleName>[a-zA-Z]\w*)\s+(?<instanceName>[a-zA-Z]\w*)\s*\((?<ios>\s*\.\s*[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*\)(?:\s*,\s*\.\s*[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*\))*)\s*\)\s*;/gs ) {    #module instance
-        my $name     = $+{moduleName};
+        my $name         = $+{moduleName};
         my $instanceName = $+{instanceName};
-        my $io       = $+{ios};
+        my $io           = $+{ios};
         if ( exists $moduleDeclarations->{$name} ) {
             my $instance = "";
             $instance .= "X$instanceName$subcktCount ";
@@ -962,10 +973,10 @@ foreach (@moduleNames) {
                 }
             }
             $instance .= "$name\n";
-            $subckt .= $instance;
+            $subckt   .= $instance;
             $instance = "$instanceName($io)";
             $instance =~ s/\n| |\t//g;
-            $logger->debug("Module instance '$name $instance' parsed as '" . cropStr($instance,10) . "'\n");
+            $logger->debug( "Module instance '$name $instance' parsed as '" . cropStr( $instance, 10 ) . "'\n" );
         }
     }
     $subckt .= ".ENDS $name\n\n";
@@ -985,7 +996,8 @@ $subckt .= " ";
 $subckt .= join( " ", @{ $moduleDeclarations->{$topModuleName}->{output} } );
 $subckt .= " $topModuleName\n";
 print $outputFileHandler $subckt;
-$logger->info("Sub-circuit for top-module generated as '" . cropStr($subckt,15) . "'\n");
+$logger->info( "Sub-circuit for top-module generated as '" . cropStr( $subckt, 15 ) . "'\n" );
+
 foreach ( @{ $moduleDeclarations->{$topModuleName}->{output} } ) {
     print $outputFileHandler "C_$_ $_ GND $CapacitorLoad\n";
 }
@@ -1007,9 +1019,16 @@ $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$time
 print $outputFileHandler "\n.END\n";
 close $outputFileHandler;
 
+if ( -d $bufferFolderName ) {
+    remove_tree( $bufferFolderName, { error => \my $error } );
+    foreach (@$error) {
+        $logger->warning("Unable to delete cache file $error->[0]: $error->[1]\n");
+    }
+    $logger->info("\nCache file cleared\n");
+}
+
 $logger->info("\nGeneration done!\n");
 my $end_time = [gettimeofday];
-$logger->info("Total time usage:\t" . tv_interval($start_time, $end_time) . " sec\n\n");
-
+$logger->info( "Total time usage:\t" . tv_interval( $start_time, $end_time ) . " sec\n\n" );
 
 1;
