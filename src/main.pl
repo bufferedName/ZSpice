@@ -1019,7 +1019,7 @@ $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$time
 print $outputFileHandler "\n.END\n";
 close $outputFileHandler;
 
-if ( -d $bufferFolderName ) {
+if ( $needClearCache && (-d $bufferFolderName) ) {
     remove_tree( $bufferFolderName, { error => \my $error } );
     foreach (@$error) {
         $logger->warning("Unable to delete cache file $error->[0]: $error->[1]\n");
