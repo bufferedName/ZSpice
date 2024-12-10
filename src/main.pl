@@ -452,7 +452,7 @@ foreach my $filename (@inputFileNames) {
                 #assign bus seperation
                 my @assigns = $content =~ /(\s*assign\s+[a-zA-Z]\w*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*=\s*(?:(?:(?:(?<!\d)\w+(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|(?:[()~&|^])|(?:\d+'(?:b|h|d)[\dA-Fa-f]+))\s*)+;)/gi;
                 foreach my $assign (@assigns) {
-                    my $res = "";
+                    my $res          = "";
                     my $originAssign = $assign;
                     $assign =~ s/\n//g;
                     $assign =~ /^(?<blank>\s*)assign\s+(?<fullname>[a-zA-Z]\w*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)\s*=\s*(?<expr>(?:(?:(?:(?<!\d)\w+(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|(?:[()~&|^])|(?:\d+'(?:b|h|d)[\dA-Fa-f]+))\s*)+);/i;
@@ -529,7 +529,15 @@ foreach my $filename (@inputFileNames) {
 }
 foreach my $filename (@inputFileNames) {
     open( my $fhout, ">", "$bufferFolderName/$filename" )
-      or die "Cannot open $bufferFolderName/$filename $!\n";
+      or die "Cannot open '$bufferFolderName/$filename' $!\n";
+    open( my $fhin, "<", "$inputFolderName/$filename" )
+      or die "Unable to read '$inputFolderName/$filename' $!\n";
+    while ( my $line = <$fhin> ) {
+        if ( $line =~ /`include/i ) {
+            print $fhout $line;
+        }
+    }
+    close $fhin;
 
     foreach my $name ( keys %{$moduleDeclarations} ) {
         if ( $moduleDeclarations->{$name}->{file} eq $filename ) {
@@ -539,7 +547,7 @@ foreach my $filename (@inputFileNames) {
             # module instance array seperation
             my @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\[\s*\d+\s*:\s*\d+\s*\]\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*\s*\)\s*;)/g;
             foreach my $instance (@instances) {
-                my $res = "";
+                my $res            = "";
                 my $originInstance = $instance;
                 $instance =~ s/\n//g;
                 $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\[\s*(?<msb>\d+)\s*:\s*(?<lsb>\d+)\s*\]\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*)\s*\)\s*;/;
@@ -617,7 +625,7 @@ foreach my $filename (@inputFileNames) {
             # module instance bus seperation
             @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*\s*\)\s*;)/g;
             foreach my $instance (@instances) {
-                my $res = "";
+                my $res            = "";
                 my $originInstance = $instance;
                 $instance =~ s/\n//g;
                 $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*)\s*\)\s*;/;
@@ -625,6 +633,7 @@ foreach my $filename (@inputFileNames) {
                 my $moduleName   = $+{moduleName};
                 my $instanceName = $+{instanceName};
                 my $io           = $+{io};
+
                 if ( !exists $moduleDeclarations->{$moduleName} ) {
                     die "Undefined module '$moduleName' at '$filename' in expr '$instance'\n";
                 }
@@ -1025,7 +1034,7 @@ $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$time
 print $outputFileHandler "\n.END\n";
 close $outputFileHandler;
 
-if ( $needClearCache && (-d $bufferFolderName) ) {
+if ( $needClearCache && ( -d $bufferFolderName ) ) {
     remove_tree( $bufferFolderName, { error => \my $error } );
     foreach (@$error) {
         $logger->warning("Unable to delete cache file $error->[0]: $error->[1]\n");
