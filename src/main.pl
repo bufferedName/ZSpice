@@ -481,7 +481,7 @@ foreach my $filename (@inputFileNames) {
                         }
                         $res .= ";\n";
                     }
-                    my $res .= "\n\n";
+                    $res = "\n$res";
                     my $pos = index( $content, $originAssign );
                     substr( $content, $pos, length($originAssign), $res );
                 }
