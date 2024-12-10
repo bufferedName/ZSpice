@@ -453,6 +453,7 @@ foreach my $filename (@inputFileNames) {
                 my @assigns = $content =~ /(\s*assign\s+[a-zA-Z]\w*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*=\s*(?:(?:(?:(?<!\d)\w+(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|(?:[()~&|^])|(?:\d+'(?:b|h|d)[\dA-Fa-f]+))\s*)+;)/gi;
                 foreach my $assign (@assigns) {
                     my $res = "";
+                    my $originAssign = $assign;
                     $assign =~ s/\n//g;
                     $assign =~ /^(?<blank>\s*)assign\s+(?<fullname>[a-zA-Z]\w*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)\s*=\s*(?<expr>(?:(?:(?:(?<!\d)\w+(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|(?:[()~&|^])|(?:\d+'(?:b|h|d)[\dA-Fa-f]+))\s*)+);/i;
                     my $blank    = $+{blank};
@@ -480,8 +481,9 @@ foreach my $filename (@inputFileNames) {
                         }
                         $res .= ";\n";
                     }
-                    my $pos = index( $content, $assign );
-                    substr( $content, $pos, length($assign), $res );
+                    my $res .= "\n\n";
+                    my $pos = index( $content, $originAssign );
+                    substr( $content, $pos, length($originAssign), $res );
                 }
 
                 $moduleDeclarations->{$name}->{content} = $content;
@@ -538,6 +540,7 @@ foreach my $filename (@inputFileNames) {
             my @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\[\s*\d+\s*:\s*\d+\s*\]\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*\s*\)\s*;)/g;
             foreach my $instance (@instances) {
                 my $res = "";
+                my $originInstance = $instance;
                 $instance =~ s/\n//g;
                 $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\[\s*(?<msb>\d+)\s*:\s*(?<lsb>\d+)\s*\]\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*)\s*\)\s*;/;
                 my $msb          = $+{msb};
@@ -603,8 +606,9 @@ foreach my $filename (@inputFileNames) {
                     }
                     $res .= ");\n";
                 }
-                my $pos = index( $content, $instance );
-                substr( $content, $pos, length($instance), $res );
+                $res .= "\n\n";
+                my $pos = index( $content, $originInstance );
+                substr( $content, $pos, length($originInstance), $res );
                 $res =~ s/\n/ /gs;
                 $res = cropStr( $res, 30 );
                 $logger->debug("Seperate module instance array '$instance' => $res\n");
@@ -614,6 +618,7 @@ foreach my $filename (@inputFileNames) {
             @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*\s*\)\s*;)/g;
             foreach my $instance (@instances) {
                 my $res = "";
+                my $originInstance = $instance;
                 $instance =~ s/\n//g;
                 $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*)\s*\)\s*;/;
                 my $blank        = $+{blank};
@@ -665,8 +670,9 @@ foreach my $filename (@inputFileNames) {
                     }
                 }
                 $res .= "\n$blank);";
-                my $pos = index( $content, $instance );
-                substr( $content, $pos, length($instance), $res );
+                my $res = "\n$res";
+                my $pos = index( $content, $originInstance );
+                substr( $content, $pos, length($originInstance), $res );
                 $res =~ s/\n/ /gs;
                 $res = cropStr( $res, 30 );
                 $logger->debug("Seperate buses of module instance '$instance' => $res\n");
