@@ -1,6 +1,6 @@
 .LIB sm046005-1j.hspice typical
 .OPTION POST
-.PARAM WN=1u LP=0.35u WP=2u LN=0.35u
+.PARAM WN=1u LN=0.35u WP=2u LP=0.35u
 
 
 .GLOBAL VDD GND
@@ -20,24 +20,6 @@ Mn3 buf3 in1_n GND GND NMOS_3P3 L=LN W=2*WN
 Mn4 buf3 in2 GND GND NMOS_3P3 L=LN W=2*WN
 .ENDS XOR
 
-.SUBCKT MUX in1 in2 sel out
-.LIB sm046005-1j.hspice typical
-XINV GND sel nsel INV
-Mp1 out1 in1 VDD VDD PMOS_3P3 L=LP W=WP
-Mp2 out1 sel VDD VDD PMOS_3P3 L=LP W=WP
-Mn1 out1 in1 buf1 buf1 NMOS_3P3 L=LN W=WN
-Mn2 buf1 sel GND GND NMOS_3P3 L=LN W=WN
-Mp3 out2 in2 VDD VDD PMOS_3P3 L=LP W=WP
-Mp4 out2 nsel VDD VDD PMOS_3P3 L=LP W=WP
-Mn3 out2 in2 buf2 buf2 NMOS_3P3 L=LN W=WN
-Mn4 buf2 nsel GND GND NMOS_3P3 L=LN W=WN
-Mp5 out out1 VDD VDD PMOS_3P3 L=LP W=WP
-Mp6 out out2 VDD VDD PMOS_3P3 L=LP W=WP
-Mn5 out out1 buf buf NMOS_3P3 L=LN W=WN
-Mn6 buf out2 GND GND NMOS_3P3 L=LN W=WN
-.ENDS MUX
-
-
 .SUBCKT AND in1 in2 out
 .LIB sm046005-1j.hspice typical
 Mp1 out_buf in1 VDD VDD PMOS_3P3 L=LP W=WP
@@ -46,12 +28,6 @@ Mn1 out_buf in1 buf buf NMOS_3P3 L=LN W=2*WN
 Mn2 buf in2 GND GND NMOS_3P3 L=LN W=2*WN
 XINV GND out_buf out INV
 .ENDS AND
-
-.SUBCKT INV nc in out
-.LIB sm046005-1j.hspice typical
-Mp out in VDD VDD PMOS_3P3 L=LP W=WP
-Mn out in GND GND NMOS_3P3 L=LN W=WN
-.ENDS INV
 
 .SUBCKT OR in1 in2 out
 .LIB sm046005-1j.hspice typical
@@ -62,25 +38,11 @@ Mn2 out_buf in2 GND GND NMOS_3P3 L=LN W=WN
 XINV GND out_buf out INV
 .ENDS OR
 
-.SUBCKT add1 a b cin sum cout
+.SUBCKT INV nc in out
 .LIB sm046005-1j.hspice typical
-XOR1000 c1 c2 cout OR
-Xhadd11001 a b s c1 hadd
-Xhadd21002 s cin sum c2 hadd
-.ENDS add1
-
-.SUBCKT top_module a_0 b_0 a_1 b_1 a_2 b_2 a_3 b_3 cin sum_0 sum_1 sum_2 sum_3 cout
-.LIB sm046005-1j.hspice typical
-Rshort_cout cout carry_out_3 0
-Rshort_carry_in_0 carry_in_0 cin 0
-Rshort_carry_in_1 carry_in_1 carry_out_0 0
-Rshort_carry_in_2 carry_in_2 carry_out_1 0
-Rshort_carry_in_3 carry_in_3 carry_out_2 0
-Xadd_01003 a_0 b_0 carry_in_0 sum_0 carry_out_0 add1
-Xadd_11004 a_1 b_1 carry_in_1 sum_1 carry_out_1 add1
-Xadd_21005 a_2 b_2 carry_in_2 sum_2 carry_out_2 add1
-Xadd_31006 a_3 b_3 carry_in_3 sum_3 carry_out_3 add1
-.ENDS top_module
+Mp out in VDD VDD PMOS_3P3 L=LP W=WP
+Mn out in GND GND NMOS_3P3 L=LN W=WN
+.ENDS INV
 
 .SUBCKT hadd a b s c
 .LIB sm046005-1j.hspice typical
@@ -94,6 +56,26 @@ Mp4 s c buf buf PMOS_3P3 L=LP W=2*WP
 Mn3 s out_buf GND GND NMOS_3P3 L=LN W=WN
 Mn4 s c GND GND NMOS_3P3 L=LN W=WN
 .ENDS hadd
+
+.SUBCKT top_module a_0 b_0 a_1 b_1 a_2 b_2 a_3 b_3 cin sum_0 sum_1 sum_2 sum_3 cout
+.LIB sm046005-1j.hspice typical
+Rshort_cout cout carry_out_3 0
+Rshort_carry_in_0 carry_in_0 cin 0
+Rshort_carry_in_1 carry_in_1 carry_out_0 0
+Rshort_carry_in_2 carry_in_2 carry_out_1 0
+Rshort_carry_in_3 carry_in_3 carry_out_2 0
+Xadd_01000 a_0 b_0 carry_in_0 sum_0 carry_out_0 add1
+Xadd_11001 a_1 b_1 carry_in_1 sum_1 carry_out_1 add1
+Xadd_21002 a_2 b_2 carry_in_2 sum_2 carry_out_2 add1
+Xadd_31003 a_3 b_3 carry_in_3 sum_3 carry_out_3 add1
+.ENDS top_module
+
+.SUBCKT add1 a b cin sum cout
+.LIB sm046005-1j.hspice typical
+XOR1004 c1 c2 cout OR
+Xhadd11005 a b s c1 hadd
+Xhadd21006 s cin sum c2 hadd
+.ENDS add1
 
 
 

@@ -2,7 +2,10 @@
 /examples/output/top.lis
 /examples/output/top.pa0
 /examples/output/top.st0
-/examples/output/top.tr0s
+/examples/output/top.tr0
+/examples/output/testbench/work/
+/examples/output/testbench/transcript
+/examples/output/testbench/vsim.wlf
 .vscode/
 /src/deleteKey.reg
 VLSI2024/

@@ -5,9 +5,17 @@ use Getopt::Long;
 use Log::Dispatch;
 use Log::Dispatch::Screen;
 use File::Copy;
-use File::Path  qw(remove_tree);
+use File::Path qw(remove_tree);
+use File::Basename;
+use File::Spec;
 use Time::HiRes qw(gettimeofday tv_interval);
+use Cwd         qw(getcwd abs_path);
+use threads;
+use threads::shared;
 require TreeNode;
+
+my $current_directory = File::Spec->catdir( dirname( abs_path($0) ), '..' );
+chdir $current_directory or die "Cannot change working dir: $!";
 
 my $start_time = [gettimeofday];
 
@@ -62,13 +70,14 @@ my $testbenchPulse;
 my $CapacitorLoad;
 my $needClearCache;
 my $ignoreFiles;
+my $testbenchIterMax;
 my %options = (
     'verbose|v'       => '\$verbose',
     'output|o=s'      => '\$outputFileName',
     'top=s'           => '\$topModuleFileName',
     'model|m=s'       => '\$modelName',
     'process|p=s'     => '\$processName',
-    'testbench|t'     => '\$needTestBench',
+    'testbench|t=s'   => '\$needTestBench',
     'voltage=s'       => '\$voltage',
     'timescale=s'     => '\$timescale',
     'tbStep=s'        => '\$testbenchStep',
@@ -76,6 +85,7 @@ my %options = (
     'capacitorload=s' => '\$CapacitorLoad',
     'clearCache'      => '\$needClearCache',
     'ignoreFiles=s'   => '\$ignoreFiles',
+    'tbIterMax=s'     => '\$testbenchIterMax',
 
 );
 
@@ -221,6 +231,13 @@ if ( -d $bufferFolderName ) {
         $logger->warning("Unable to delete cache file $error->[0]: $error->[1]\n");
     }
     $logger->info("Cache file cleared\n");
+}
+if ( -d "$outputFolderName/testbench" ) {
+    remove_tree( "$outputFolderName/testbench", { error => \my $error } );
+    foreach (@$error) {
+        $logger->warning("Unable to delete cache file $error->[0]: $error->[1]\n");
+    }
+    $logger->info("Testbench file cleared\n");
 }
 unless ( -d $bufferFolderName ) {
     mkdir $bufferFolderName
@@ -383,6 +400,7 @@ foreach my $filename (@inputFileNames) {
                 if ($declaration) {
                     foreach (@names) {
                         push @{ $declaration->{$type} }, $_;
+                        push @{ $declaration->{originIO} }, { name => $_, LSB => 0, MSB => 0, type => $type, width => 1 };
                     }
                 }
                 return $expr . "\n";
@@ -391,6 +409,7 @@ foreach my $filename (@inputFileNames) {
             my $width = $MSB - $LSB + 1;
             foreach (@names) {
                 $buses->{$_} = { name => $_, LSB => $LSB, MSB => $MSB, type => $type, width => $width };
+                push @{ $declaration->{originIO} }, { name => $_, LSB => $LSB, MSB => $MSB, type => $type, width => $width };
                 $logger->debug("Bus declared:\{name =>\t$_,\tLSB =>\t$LSB,\tMSB =>\t$MSB,\ttype =>\t$type,\twidth =>\t$width\}\tin module '$moduleName' of file '$filename'\n");
             }
             my $res = "";
@@ -445,7 +464,7 @@ foreach my $filename (@inputFileNames) {
                 if ( exists $moduleDeclarations->{$name} ) {
                     die "Multiple Definition found of module '$name'\n";
                 }
-                $moduleDeclarations->{$name} = { name => $name, input => [], output => [], file => $filename, isCellModule => $isCellModule, cellDefinition => "" };
+                $moduleDeclarations->{$name} = { name => $name, input => [], output => [], file => $filename, isCellModule => $isCellModule, cellDefinition => "", originIO => [] };
 
                 #io bus seperation
                 my @ios = $io =~ /(\s*(?:input|output)\s*(?:\[\s*\d+\s*:\s*\d+\s*\])?\s*(?!input\b)(?!output\b)[a-zA-Z]\w*(?:\s*,\s*(?!input\b)(?!output\b)[a-zA-Z]\w*)*\s*[,;]?\s*)/g;
@@ -691,7 +710,7 @@ foreach my $filename (@inputFileNames) {
                     }
                 }
                 $res .= "\n$blank);";
-                my $res = "\n$res";
+                $res = "\n$res";
                 my $pos = index( $content, $originInstance );
                 substr( $content, $pos, length($originInstance), $res );
                 $res =~ s/\n/ /gs;
@@ -1031,16 +1050,97 @@ if ($needTestBench) {
     }
     $logger->info("Load Capacitor(s) generated\n");
     print $outputFileHandler "\n\n";
-    foreach ( @{ $moduleDeclarations->{$topModuleName}->{input} } ) {
-        print $outputFileHandler "V_$_ $_ GND PULSE(0V $voltage";
-        print $outputFileHandler "V $testbenchPulse$timescale 0$timescale 0$timescale $testbenchPulse$timescale ";
-        $testbenchPulse *= 2;
-        print $outputFileHandler "$testbenchPulse$timescale)\n";
+
+    my $testbenchFolderName = $outputFolderName . "/testbench";
+    unless ( -d $testbenchFolderName ) {
+        mkdir $testbenchFolderName
+          or die "Cannot create folder '$testbenchFolderName': $! \n";
     }
-    $logger->info("Pulse votage source(s) generated\n");
-    print $outputFileHandler "\n\n";
-    print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
-    $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
+    foreach (@inputFileNames) {
+        copy( "$noUTF8BOMFolderName/$_", "$testbenchFolderName/$_" )
+          or die "Cannot copy file '$noUTF8BOMFolderName/$_' to '$testbenchFolderName/$_' : $!\n";
+    }
+    $logger->info("Testbench output folder '$testbenchFolderName' established\n");
+    open( my $ftbh, '>', "$testbenchFolderName/testbench.v" )
+      or die "Cannot open testbench output file '$testbenchFolderName/testbench.v': $!\n";
+    print $ftbh "`timescale 1ns/1ps\n";
+    print $ftbh "`include \"$topModuleFileName\"\n\n\n";
+    print $ftbh "module test_top();\n";
+    foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+        print $ftbh "\t" . ( ( $io->{type} =~ /input/i ) ? "reg " : "wire" ) . ( $io->{width} > 1 ? " [\t$io->{MSB}\t:\t$io->{LSB}\t]" : "" ) . "\t$io->{name};\n";
+    }
+    print $ftbh "\t$topModuleName top_inst(\n";
+    my @ioPort;
+    foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+        push @ioPort, "\t\t.$io->{name}\t\t(\t\t$io->{name})";
+    }
+    print $ftbh join( ",\n", @ioPort );
+    print $ftbh "\n\t);\n";
+    if ( $needTestBench =~ /sweep/i ) {
+        my @integers;
+        print $ftbh "\n\tinteger ";
+        foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+            if ( $io->{type} =~ /input/i ) {
+                push @integers, "$io->{name}_tbInst_iter";
+            }
+        }
+        print $ftbh join( ", ", @integers ) . ";\n\n";
+        print $ftbh "\tinitial begin\n";
+        my @stack;
+        foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+            if ( $io->{type} =~ /input/i ) {
+                my $iterName   = "$io->{name}_tbInst_iter";
+                my $iterUBound = ( $io->{width} <= 30 ) ? ( 1 << $io->{width} ) : ( 1 << 31 ) - 1;
+                if ($testbenchIterMax) {
+                    if ( $iterUBound > $testbenchIterMax ) {
+                        $iterUBound = $testbenchIterMax;
+                    }
+                }
+                print $ftbh "\t" x ( @stack + 2 ) . "$io->{name} = $io->{width}'b0;\n";
+                print $ftbh "\t" x ( @stack + 2 ) . "for($iterName = 0; $iterName < $iterUBound; $iterName = $iterName + 1) begin\n";
+                @stack = ( @stack, ( $io, ) );
+            }
+        }
+        print $ftbh "\t" x ( @stack + 2 ) . "#$testbenchPulse;\n";
+        while (@stack) {
+            my $io = pop @stack;
+            print $ftbh "\t" x ( @stack + 3 ) . "$io->{name} = $io->{name} + 1;\n";
+            print $ftbh "\t" x ( @stack + 2 ) . "end\n";
+        }
+        print $ftbh "\tend\n";
+        $logger->info("Verilog testbench file '$testbenchFolderName/testbench.v' generated\n");
+        foreach ( @{ $moduleDeclarations->{$topModuleName}->{input} } ) {
+            print $outputFileHandler "V_$_ $_ GND PULSE(0V $voltage";
+            print $outputFileHandler "V $testbenchPulse$timescale 0$timescale 0$timescale $testbenchPulse$timescale ";
+            $testbenchPulse *= 2;
+            print $outputFileHandler "$testbenchPulse$timescale)\n";
+        }
+        $logger->info("Pulse votage source(s) generated\n");
+        print $outputFileHandler "\n\n";
+        print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
+        $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
+
+    }
+    elsif ( $needTestBench =~ /specificInput/i ) {
+
+    }
+    print $ftbh "endmodule";
+    close $ftbh;
+
+    open( $ftbh, '>', "$testbenchFolderName/autorun.tcl" )
+      or die "Cannot open modelsim autorun file '$testbenchFolderName/autorun.tcl': $!\n";
+    print $ftbh "quit -sim\n";
+    print $ftbh "vlib work\n";
+    print $ftbh "vlog " . join( " ", @inputFileNames ) . " testbench.v\n";
+    print $ftbh "vsim work.test_top -voptargs=\"+acc\"\n";
+    print $ftbh "view wave\n";
+    print $ftbh "delete wave *\n";
+    print $ftbh "add wave sim:/test_top/*\n";
+    print $ftbh "radix -hex\n";
+    print $ftbh "run -all\n";
+    close $ftbh;
+    $logger->info("Modelsim autorun script '$testbenchFolderName/autorun.tcl' generated\n");
+
 }
 
 #----------------------------------------------------------#
@@ -1059,5 +1159,34 @@ if ( $needClearCache && ( -d $bufferFolderName ) ) {
 $logger->info("\nGeneration done!\n");
 my $end_time = [gettimeofday];
 $logger->info( "Total time usage:\t" . tv_interval( $start_time, $end_time ) . " sec\n\n" );
+
+#--------------------Running Simulation--------------------#
+if ($needTestBench) {
+    my $has_modelsim : shared = 0;
+    my $has_hspice : shared   = 0;
+
+    sub run_modelsim {
+        chdir $outputFolderName . "/testbench" or die "Cannot change directory to '$outputFolderName/testbench': $!";
+        $logger->info("Running ModelSim simulation...\n");
+        my $buf = system("vsim -do ./autorun.tcl");
+        {
+            lock($has_modelsim);
+            $has_modelsim = $buf;
+        }
+    }
+
+    my $modelsimThread = threads->create( \&run_modelsim, 1 );
+    $modelsimThread->join();
+    sleep(1);
+    {
+        lock($has_modelsim);
+        if ($has_modelsim) {
+            $logger->warning("Cannot find modelsim\n");
+        }
+    }
+
+}
+
+#----------------------------------------------------------#
 
 1;

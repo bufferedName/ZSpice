@@ -1,3 +1,4 @@
+`include "adders.v"
 module top_module(input [3:0] a,b,
                   input cin,
                   output[3:0] sum,

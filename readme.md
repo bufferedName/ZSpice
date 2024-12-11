@@ -76,21 +76,24 @@ endmodule
 在命令行中运行
 
 ```bash
-$ perl ./src/main.pl ./examples --top top.v -o top.sp --process sm046005-1j.hspice --voltage 3.3 --model SC -t --timescale us --tbStep 0.01 --tbPulse 5 --capacitorLoad 1pF --WP 2u
+$ perl ./src/main.pl ./examples --ignoreFiles tb.v --top top.v -o top.sp --process sm046005-1j.hspice --voltage 3.3 --model SC -t=sweep --tbIterMax 16 --timescale us --tbStep 0.01 --tbPulse 5 --capacitorLoad 1pF --WP 2u --clearCache
 ```
 
 `./src/main.pl`为主程序，
 `./examples`指定输入目录为`./examples`，
+`--ignoreFiles tb.v`综合时忽略文件tb.v，多个文件用逗号隔开
 `--top top.v`指定top_module所在的文件为`top.v`（若无此参数则会自动选取输入文件夹内唯一的.v文件或名字带有top的.v文件），会自动指定此文件内名字内带有top的模块作为顶层模块，
 `--process sm046005-1j.hspice`指定工艺库为`sm046005-1j.hspice`（如无指定则默认sm046005-1j.hspice），
 `--voltage 3.3`指定$V_{DD}=3.3V$（如无指定则默认$V_{DD}=3.3V$），
 `--model SC`指定门模块模型为`SC`（静态互补）（如无指定则默认SC），
-`-t`指定需要生成瞬态分析的激励源，
+`-t=sweep`指定需要生成瞬态分析的激励源和RTL仿真激励文件（生成在\$\{inputPath\}/output/testbench/testbench.v中），生成模式为扫描所有可能输入模式，
+`--tbIterMax 16`设定RTL仿真激励文件中每个输入信号最大仿真种类数为16，避免大模块仿真时间过长，
 `--timescale us`指定瞬态分析参数的时间单位为$\mu s$（如无指定默认为$ns$），
 `--tbStep 0.01`指定瞬态分析最大步长为$0.01\mu s$（如无指定默认为$0.01ns$），
 `--tbPulse 5`指定瞬态分析激励源最小脉宽为$5\mu s$（如无指定默认为$10ns$），
 `--capacitorLoad 1pF`指定输出负载电容为$1pF$（如无指定默认为$0.01pF$），
 `--WP 2u`指定全局PMOS单位宽度为$2\mu m$（如无指定默认为$3.5\mu m$）
+`--clearCache`清理\$\{inputPath\}/output/tmp文件夹
 
 程序会在输入目录下的`output`文件夹中生成带有激励源的网表文件，激励源会对所有的输入情况进行激励。上述脚本会输出`./examples/output/top.sp`:
 
@@ -220,6 +223,64 @@ V_cin cin GND PULSE(0V 3.3V 1280us 0us 0us 1280us 2560us)
 
 使用HSpice对`top.sp`进行仿真后，即有如下波形：
 ![png](./examples/output/example_wave.png)
+
+程序也会在output/testbench目录下生成RTL仿真激励文件`testbench.v`：
+```verilog
+`timescale 1ns/1ps
+`include "top.v"
+
+
+module test_top();
+	reg  [	3	:	0	]	a;
+	reg  [	3	:	0	]	b;
+	reg 	cin;
+	wire [	3	:	0	]	sum;
+	wire	cout;
+	top_module top_inst(
+		.a		(		a),
+		.b		(		b),
+		.cin		(		cin),
+		.sum		(		sum),
+		.cout		(		cout)
+	);
+
+	integer a_tbInst_iter, b_tbInst_iter, cin_tbInst_iter;
+
+	initial begin
+		a = 4'b0;
+		for(a_tbInst_iter = 0; a_tbInst_iter < 16; a_tbInst_iter = a_tbInst_iter + 1) begin
+			b = 4'b0;
+			for(b_tbInst_iter = 0; b_tbInst_iter < 16; b_tbInst_iter = b_tbInst_iter + 1) begin
+				cin = 1'b0;
+				for(cin_tbInst_iter = 0; cin_tbInst_iter < 2; cin_tbInst_iter = cin_tbInst_iter + 1) begin
+					#5;
+					cin = cin + 1;
+				end
+				b = b + 1;
+			end
+			a = a + 1;
+		end
+	end
+endmodule
+```
+
+同时也会在上述目录下生成ModelSim仿真脚本`autorun.tcl`:
+
+```tcl
+quit -sim
+vlib work
+vlog adders.v top.v testbench.v
+vsim work.test_top -voptargs="+acc"
+view wave
+delete wave *
+add wave sim:/test_top/*
+radix -hex
+run -all
+```
+
+如果环境变量中有ModelSim，会自动运行仿真脚本，并打开波形图
+![png](./examples/output/testbench/example_wave.png)
+
 
 ## 环境要求
 
