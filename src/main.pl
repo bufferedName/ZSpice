@@ -61,6 +61,7 @@ my $testbenchStep;
 my $testbenchPulse;
 my $CapacitorLoad;
 my $needClearCache;
+my $ignoreFiles;
 my %options = (
     'verbose|v'       => '\$verbose',
     'output|o=s'      => '\$outputFileName',
@@ -74,6 +75,7 @@ my %options = (
     'tbPulse=s'       => '\$testbenchPulse',
     'capacitorload=s' => '\$CapacitorLoad',
     'clearCache'      => '\$needClearCache',
+    'ignoreFiles=s'   => '\$ignoreFiles',
 
 );
 
@@ -139,11 +141,21 @@ opendir( my $dh, $inputFolderName )
   or die "Cannot open directory '$inputFolderName': $!\n";
 my @inputFileNames = readdir($dh);
 my @inputFileNamesSpice;
+my @ignoreFilesList = split( /\s*,\s*/, $ignoreFiles );
+if (@ignoreFilesList) {
+    foreach my $name (@ignoreFilesList) {
+        @inputFileNamesSpice = grep { $_ ne $name } @inputFileNames;
+        @inputFileNames      = grep { $_ ne $name } @inputFileNames;
+    }
+}
 closedir($dh);
 @inputFileNamesSpice = grep { !(/^\.\.?$/) && /\.sp$|\.spice$/i } @inputFileNames;
 @inputFileNames      = grep { !(/^\.\.?$/) && /\.v$|\.V$/ } @inputFileNames;
 $logger->info( "Found verilog file(s):\n\t" . join( "\n\t", @inputFileNames ) . "\n" );
 $logger->info( "Found spice file(s):\n\t" . join( "\n\t", @inputFileNamesSpice ) . "\n" );
+if (@ignoreFilesList) {
+    $logger->info( "Ignore input file(s):\n\t" . join( "\n\t", @ignoreFilesList ) . "\n" );
+}
 
 if ( !(@inputFileNames) ) {
     die "Cannot find any Verilog files (*.v or *.V)\n";
