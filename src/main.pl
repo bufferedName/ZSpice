@@ -15,6 +15,7 @@ use threads::shared;
 require TreeNode;
 
 my $current_directory = File::Spec->catdir( dirname( abs_path($0) ), '..' );
+my $origin_cd         = getcwd();
 chdir $current_directory or die "Cannot change working dir: $!";
 
 my $start_time = [gettimeofday];
@@ -1087,7 +1088,7 @@ if ($needTestBench) {
         print $ftbh join( ", ", @integers ) . ";\n\n";
         print $ftbh "\tinitial begin\n";
         my @stack;
-        foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+        foreach my $io ( reverse @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
             if ( $io->{type} =~ /input/i ) {
                 my $iterName   = "$io->{name}_tbInst_iter";
                 my $iterUBound = ( $io->{width} <= 30 ) ? ( 1 << $io->{width} ) : ( 1 << 31 ) - 1;
@@ -1164,9 +1165,12 @@ $logger->info( "Total time usage:\t" . tv_interval( $start_time, $end_time ) . "
 if ($needTestBench) {
     my $has_modelsim : shared = 0;
     my $has_hspice : shared   = 0;
+    $outputFileName =~ /(\w+)(.sp)?$/i;
+    my $outputName = $1;
+    $outputFileName = $1 . $2;
 
     sub run_modelsim {
-        chdir $outputFolderName . "/testbench" or die "Cannot change directory to '$outputFolderName/testbench': $!";
+        chdir "$origin_cd/$outputFolderName/testbench" or die "Cannot change directory to '$outputFolderName/testbench': $!";
         $logger->info("Running ModelSim simulation...\n");
         my $buf = system("vsim -do ./autorun.tcl");
         {
@@ -1175,18 +1179,71 @@ if ($needTestBench) {
         }
     }
 
-    my $modelsimThread = threads->create( \&run_modelsim, 1 );
-    $modelsimThread->join();
+    sub run_hspice {
+        my $has_waveview : shared = 0;
+        sub run_waveview {
+            chdir "$origin_cd/$outputFolderName" or die "Cannot change directory to '$outputFolderName': $!";
+            $logger->info("Running HSpice Waveview...\n");
+            my $buf = system("wv $outputName.tr0");
+            {
+                lock($has_waveview);
+                $has_waveview = $buf;
+            }
+        }
+        chdir "$origin_cd/$outputFolderName" or die "Cannot change directory to '$outputFolderName': $!";
+        $logger->info("Running HSpice simulation...\n");
+        unlink "$outputName.tr0" if -e "$outputName.tr0";
+        unlink "$outputName.ic0" if -e "$outputName.ic0";
+        unlink "$outputName.st0" if -e "$outputName.st0";
+        unlink "$outputName.pa0" if -e "$outputName.pa0";
+        unlink "$outputName.lis" if -e "$outputName.lis";
+        my $buf = system("hspice -i $outputFileName -o $outputName.lis -mt 8");
+        {
+            lock($has_hspice);
+            $has_hspice = $buf;
+        }
+        if ($buf) {
+            return;
+        }
+        while(!-s "$outputName.tr0"){
+            sleep(0.1);
+        }
+        my @lastSize = (0,0,-s "$outputName.tr0");
+        while(1){
+            sleep(1);
+            shift @lastSize;
+            push @lastSize,-s "$outputName.tr0";
+            if($lastSize[0] == $lastSize[1] && $lastSize[1] == $lastSize[2]){
+                last;
+            }
+        }
+        my $waveviewThread = threads->create(\&run_waveview);
+        $waveviewThread->join();
+    }
+
+    my $modelsimThread = threads->create( \&run_modelsim );
     sleep(1);
+    my $hspiceThread = threads->create(\&run_hspice);
     {
         lock($has_modelsim);
         if ($has_modelsim) {
-            $logger->warning("Cannot find modelsim\n");
+            $logger->warning("Cannot find ModelSim\n");
         }
     }
+    {
+        lock($has_hspice);
+        if ($has_hspice) {
+            $logger->warning("Cannot find HSpice\n");
+        }
+    }
+
+    $modelsimThread->join();
+    $hspiceThread->join();
 
 }
 
 #----------------------------------------------------------#
+
+$logger->info("\n\nJob Done!\n\n");
 
 1;

@@ -19,18 +19,18 @@ module test_top();
 	integer a_tbInst_iter, b_tbInst_iter, cin_tbInst_iter;
 
 	initial begin
-		a = 4'b0;
-		for(a_tbInst_iter = 0; a_tbInst_iter < 16; a_tbInst_iter = a_tbInst_iter + 1) begin
+		cin = 1'b0;
+		for(cin_tbInst_iter = 0; cin_tbInst_iter < 2; cin_tbInst_iter = cin_tbInst_iter + 1) begin
 			b = 4'b0;
 			for(b_tbInst_iter = 0; b_tbInst_iter < 16; b_tbInst_iter = b_tbInst_iter + 1) begin
-				cin = 1'b0;
-				for(cin_tbInst_iter = 0; cin_tbInst_iter < 2; cin_tbInst_iter = cin_tbInst_iter + 1) begin
+				a = 4'b0;
+				for(a_tbInst_iter = 0; a_tbInst_iter < 16; a_tbInst_iter = a_tbInst_iter + 1) begin
 					#5;
-					cin = cin + 1;
+					a = a + 1;
 				end
 				b = b + 1;
 			end
-			a = a + 1;
+			cin = cin + 1;
 		end
 	end
 endmodule

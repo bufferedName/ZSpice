@@ -100,52 +100,11 @@ $ perl ./src/main.pl ./examples --ignoreFiles tb.v --top top.v -o top.sp --proce
 ```sp
 .LIB sm046005-1j.hspice typical
 .OPTION POST
-.PARAM WP=2u WN=1u LN=0.35u LP=0.35u
+.PARAM WN=1u LP=0.35u LN=0.35u WP=2u
 
 
 .GLOBAL VDD GND
 VDD VDD GND 3.3
-
-.SUBCKT AND in1 in2 out
-.LIB sm046005-1j.hspice typical
-Mp1 out_buf in1 VDD VDD PMOS_3P3 L=LP W=WP
-Mp2 out_buf in2 VDD VDD PMOS_3P3 L=LP W=WP
-Mn1 out_buf in1 buf buf NMOS_3P3 L=LN W=2*WN
-Mn2 buf in2 GND GND NMOS_3P3 L=LN W=2*WN
-XINV GND out_buf out INV
-.ENDS AND
-
-.SUBCKT XOR in1 in2 out
-.LIB sm046005-1j.hspice typical
-XINV_1 GND in1 in1_n INV
-XINV_2 GND in2 in2_n INV
-Mp1 buf1 in1 VDD VDD PMOS_3P3 L=LP W=2*WP
-Mp2 out in2_n buf1 buf1 PMOS_3P3 L=LP W=2*WP
-Mp3 buf2 in1_n VDD VDD PMOS_3P3 L=LP W=2*WP
-Mp4 out in2 buf2 buf2 PMOS_3P3 L=LP W=2*WP
-Mn1 out in1 buf3 buf3 NMOS_3P3 L=LN W=2*WN
-Mn2 out in2_n buf3 buf3 NMOS_3P3 L=LN W=2*WN
-Mn3 buf3 in1_n GND GND NMOS_3P3 L=LN W=2*WN
-Mn4 buf3 in2 GND GND NMOS_3P3 L=LN W=2*WN
-.ENDS XOR
-
-.SUBCKT MUX in1 in2 sel out
-.LIB sm046005-1j.hspice typical
-XINV GND sel nsel INV
-Mp1 out1 in1 VDD VDD PMOS_3P3 L=LP W=WP
-Mp2 out1 sel VDD VDD PMOS_3P3 L=LP W=WP
-Mn1 out1 in1 buf1 buf1 NMOS_3P3 L=LN W=WN
-Mn2 buf1 sel GND GND NMOS_3P3 L=LN W=WN
-Mp3 out2 in2 VDD VDD PMOS_3P3 L=LP W=WP
-Mp4 out2 nsel VDD VDD PMOS_3P3 L=LP W=WP
-Mn3 out2 in2 buf2 buf2 NMOS_3P3 L=LN W=WN
-Mn4 buf2 nsel GND GND NMOS_3P3 L=LN W=WN
-Mp5 out out1 VDD VDD PMOS_3P3 L=LP W=WP
-Mp6 out out2 VDD VDD PMOS_3P3 L=LP W=WP
-Mn5 out out1 buf buf NMOS_3P3 L=LN W=WN
-Mn6 buf out2 GND GND NMOS_3P3 L=LN W=WN
-.ENDS MUX
-
 
 .SUBCKT INV nc in out
 .LIB sm046005-1j.hspice typical
@@ -162,18 +121,28 @@ Mn2 out_buf in2 GND GND NMOS_3P3 L=LN W=WN
 XINV GND out_buf out INV
 .ENDS OR
 
-.SUBCKT hadd a b s c
+.SUBCKT XOR in1 in2 out
 .LIB sm046005-1j.hspice typical
-Mp1 buf1 a VDD VDD PMOS_3P3 L=LP W=2*WP
-Mp2 out_buf b buf1 buf1 PMOS_3P3 L=LP W=2*WP
-Mn1 out_buf a GND GND NMOS_3P3 L=LN W=WN
-Mn2 out_buf b GND GND NMOS_3P3 L=LN W=WN
-XAND a b c AND
-Mp3 buf out_buf VDD VDD PMOS_3P3 L=LP W=2*WP
-Mp4 s c buf buf PMOS_3P3 L=LP W=2*WP
-Mn3 s out_buf GND GND NMOS_3P3 L=LN W=WN
-Mn4 s c GND GND NMOS_3P3 L=LN W=WN
-.ENDS hadd
+XINV_1 GND in1 in1_n INV
+XINV_2 GND in2 in2_n INV
+Mp1 buf1 in1 VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp2 out in2_n buf1 buf1 PMOS_3P3 L=LP W=2*WP
+Mp3 buf2 in1_n VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp4 out in2 buf2 buf2 PMOS_3P3 L=LP W=2*WP
+Mn1 out in1 buf3 buf3 NMOS_3P3 L=LN W=2*WN
+Mn2 out in2_n buf3 buf3 NMOS_3P3 L=LN W=2*WN
+Mn3 buf3 in1_n GND GND NMOS_3P3 L=LN W=2*WN
+Mn4 buf3 in2 GND GND NMOS_3P3 L=LN W=2*WN
+.ENDS XOR
+
+.SUBCKT AND in1 in2 out
+.LIB sm046005-1j.hspice typical
+Mp1 out_buf in1 VDD VDD PMOS_3P3 L=LP W=WP
+Mp2 out_buf in2 VDD VDD PMOS_3P3 L=LP W=WP
+Mn1 out_buf in1 buf buf NMOS_3P3 L=LN W=2*WN
+Mn2 buf in2 GND GND NMOS_3P3 L=LN W=2*WN
+XINV GND out_buf out INV
+.ENDS AND
 
 .SUBCKT top_module a_0 b_0 a_1 b_1 a_2 b_2 a_3 b_3 cin sum_0 sum_1 sum_2 sum_3 cout
 .LIB sm046005-1j.hspice typical
@@ -187,6 +156,19 @@ Xadd_11001 a_1 b_1 carry_in_1 sum_1 carry_out_1 add1
 Xadd_21002 a_2 b_2 carry_in_2 sum_2 carry_out_2 add1
 Xadd_31003 a_3 b_3 carry_in_3 sum_3 carry_out_3 add1
 .ENDS top_module
+
+.SUBCKT hadd a b s c
+.LIB sm046005-1j.hspice typical
+Mp1 buf1 a VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp2 out_buf b buf1 buf1 PMOS_3P3 L=LP W=2*WP
+Mn1 out_buf a GND GND NMOS_3P3 L=LN W=WN
+Mn2 out_buf b GND GND NMOS_3P3 L=LN W=WN
+XAND a b c AND
+Mp3 buf out_buf VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp4 s c buf buf PMOS_3P3 L=LP W=2*WP
+Mn3 s out_buf GND GND NMOS_3P3 L=LN W=WN
+Mn4 s c GND GND NMOS_3P3 L=LN W=WN
+.ENDS hadd
 
 .SUBCKT add1 a b cin sum cout
 .LIB sm046005-1j.hspice typical
@@ -222,7 +204,7 @@ V_cin cin GND PULSE(0V 3.3V 1280us 0us 0us 1280us 2560us)
 ```
 
 使用HSpice对`top.sp`进行仿真后，即有如下波形：
-![png](./examples/output/example_wave.png)
+![png](./examples/output/example_wave_hspice.png)
 
 程序也会在output/testbench目录下生成RTL仿真激励文件`testbench.v`：
 ```verilog
@@ -247,18 +229,18 @@ module test_top();
 	integer a_tbInst_iter, b_tbInst_iter, cin_tbInst_iter;
 
 	initial begin
-		a = 4'b0;
-		for(a_tbInst_iter = 0; a_tbInst_iter < 16; a_tbInst_iter = a_tbInst_iter + 1) begin
+		cin = 1'b0;
+		for(cin_tbInst_iter = 0; cin_tbInst_iter < 2; cin_tbInst_iter = cin_tbInst_iter + 1) begin
 			b = 4'b0;
 			for(b_tbInst_iter = 0; b_tbInst_iter < 16; b_tbInst_iter = b_tbInst_iter + 1) begin
-				cin = 1'b0;
-				for(cin_tbInst_iter = 0; cin_tbInst_iter < 2; cin_tbInst_iter = cin_tbInst_iter + 1) begin
+				a = 4'b0;
+				for(a_tbInst_iter = 0; a_tbInst_iter < 16; a_tbInst_iter = a_tbInst_iter + 1) begin
 					#5;
-					cin = cin + 1;
+					a = a + 1;
 				end
 				b = b + 1;
 			end
-			a = a + 1;
+			cin = cin + 1;
 		end
 	end
 endmodule
@@ -279,7 +261,7 @@ run -all
 ```
 
 如果环境变量中有ModelSim，会自动运行仿真脚本，并打开波形图
-![png](./examples/output/testbench/example_wave.png)
+![png](./examples/output/example_wave_modelsim.png)
 
 
 ## 环境要求

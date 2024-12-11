@@ -1,6 +1,6 @@
 .LIB sm046005-1j.hspice typical
 .OPTION POST
-.PARAM WN=1u LN=0.35u WP=2u LP=0.35u
+.PARAM LN=0.35u WN=1u WP=2u LP=0.35u
 
 
 .GLOBAL VDD GND
@@ -20,15 +20,6 @@ Mn3 buf3 in1_n GND GND NMOS_3P3 L=LN W=2*WN
 Mn4 buf3 in2 GND GND NMOS_3P3 L=LN W=2*WN
 .ENDS XOR
 
-.SUBCKT AND in1 in2 out
-.LIB sm046005-1j.hspice typical
-Mp1 out_buf in1 VDD VDD PMOS_3P3 L=LP W=WP
-Mp2 out_buf in2 VDD VDD PMOS_3P3 L=LP W=WP
-Mn1 out_buf in1 buf buf NMOS_3P3 L=LN W=2*WN
-Mn2 buf in2 GND GND NMOS_3P3 L=LN W=2*WN
-XINV GND out_buf out INV
-.ENDS AND
-
 .SUBCKT OR in1 in2 out
 .LIB sm046005-1j.hspice typical
 Mp1 buf in1 VDD VDD PMOS_3P3 L=LP W=2*WP
@@ -38,24 +29,20 @@ Mn2 out_buf in2 GND GND NMOS_3P3 L=LN W=WN
 XINV GND out_buf out INV
 .ENDS OR
 
+.SUBCKT AND in1 in2 out
+.LIB sm046005-1j.hspice typical
+Mp1 out_buf in1 VDD VDD PMOS_3P3 L=LP W=WP
+Mp2 out_buf in2 VDD VDD PMOS_3P3 L=LP W=WP
+Mn1 out_buf in1 buf buf NMOS_3P3 L=LN W=2*WN
+Mn2 buf in2 GND GND NMOS_3P3 L=LN W=2*WN
+XINV GND out_buf out INV
+.ENDS AND
+
 .SUBCKT INV nc in out
 .LIB sm046005-1j.hspice typical
 Mp out in VDD VDD PMOS_3P3 L=LP W=WP
 Mn out in GND GND NMOS_3P3 L=LN W=WN
 .ENDS INV
-
-.SUBCKT hadd a b s c
-.LIB sm046005-1j.hspice typical
-Mp1 buf1 a VDD VDD PMOS_3P3 L=LP W=2*WP
-Mp2 out_buf b buf1 buf1 PMOS_3P3 L=LP W=2*WP
-Mn1 out_buf a GND GND NMOS_3P3 L=LN W=WN
-Mn2 out_buf b GND GND NMOS_3P3 L=LN W=WN
-XAND a b c AND
-Mp3 buf out_buf VDD VDD PMOS_3P3 L=LP W=2*WP
-Mp4 s c buf buf PMOS_3P3 L=LP W=2*WP
-Mn3 s out_buf GND GND NMOS_3P3 L=LN W=WN
-Mn4 s c GND GND NMOS_3P3 L=LN W=WN
-.ENDS hadd
 
 .SUBCKT top_module a_0 b_0 a_1 b_1 a_2 b_2 a_3 b_3 cin sum_0 sum_1 sum_2 sum_3 cout
 .LIB sm046005-1j.hspice typical
@@ -76,6 +63,19 @@ XOR1004 c1 c2 cout OR
 Xhadd11005 a b s c1 hadd
 Xhadd21006 s cin sum c2 hadd
 .ENDS add1
+
+.SUBCKT hadd a b s c
+.LIB sm046005-1j.hspice typical
+Mp1 buf1 a VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp2 out_buf b buf1 buf1 PMOS_3P3 L=LP W=2*WP
+Mn1 out_buf a GND GND NMOS_3P3 L=LN W=WN
+Mn2 out_buf b GND GND NMOS_3P3 L=LN W=WN
+XAND a b c AND
+Mp3 buf out_buf VDD VDD PMOS_3P3 L=LP W=2*WP
+Mp4 s c buf buf PMOS_3P3 L=LP W=2*WP
+Mn3 s out_buf GND GND NMOS_3P3 L=LN W=WN
+Mn4 s c GND GND NMOS_3P3 L=LN W=WN
+.ENDS hadd
 
 
 
