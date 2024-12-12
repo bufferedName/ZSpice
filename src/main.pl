@@ -1081,62 +1081,33 @@ if ($needTestBench) {
     }
     print $ftbh join( ",\n", @ioPort );
     print $ftbh "\n\t);\n";
-    if ( $needTestBench =~ /sweep/i ) {
-        my @integers;
-        print $ftbh "\n\tinteger ";
-        foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
-            if ( $io->{type} =~ /input/i ) {
-                push @integers, "$io->{name}_tbInst_iter";
-            }
-        }
-        print $ftbh join( ", ", @integers ) . ";\n\n";
-        print $ftbh "\tinitial begin\n";
-        my @stack;
-        foreach my $io ( reverse @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
-            if ( $io->{type} =~ /input/i ) {
-                my $iterName   = "$io->{name}_tbInst_iter";
-                my $iterUBound = ( $io->{width} <= 30 ) ? ( 1 << $io->{width} ) : ( 1 << 31 ) - 1;
-                if ($testbenchIterMax) {
-                    if ( $iterUBound > $testbenchIterMax ) {
-                        $iterUBound = $testbenchIterMax;
-                    }
-                }
-                print $ftbh "\t" x ( @stack + 2 ) . "$io->{name} = $io->{width}'b0;\n";
-                print $ftbh "\t" x ( @stack + 2 ) . "for($iterName = 0; $iterName < $iterUBound; $iterName = $iterName + 1) begin\n";
-                @stack = ( @stack, ( $io, ) );
-            }
-        }
-        print $ftbh "\t" x ( @stack + 2 ) . "#$testbenchPulse;\n";
-        while (@stack) {
-            my $io = pop @stack;
-            print $ftbh "\t" x ( @stack + 3 ) . "$io->{name} = $io->{name} + 1;\n";
-            print $ftbh "\t" x ( @stack + 2 ) . "end\n";
-        }
-        print $ftbh "\tend\n";
-        $logger->info("Verilog testbench file '$testbenchFolderName/testbench.v' generated\n");
-        foreach ( @{ $moduleDeclarations->{$topModuleName}->{input} } ) {
-            print $outputFileHandler "V_$_ $_ GND PULSE(0V $voltage";
-            print $outputFileHandler "V $testbenchPulse$timescale 0$timescale 0$timescale $testbenchPulse$timescale ";
-            $testbenchPulse *= 2;
-            print $outputFileHandler "$testbenchPulse$timescale)\n";
-        }
 
-    }
-    elsif ( $needTestBench =~ /(?:[0-9a-fA-F]+)(?:,[0-9a-fA-F]+)*/i ) {
+    sub gen_tb {
+        my $inputFormat = shift;
+        my @inputData   = @_;
 
         sub trunc {
             my $inputData       = shift;
             my $totalInputWidth = shift;
-            my $buf             = $inputData;
-            $inputData = "";
-            foreach ( split( //, $buf ) ) {
-                $inputData .= sprintf( '%.4b', hex($_) );
+
+            if ( $inputFormat eq 'h' ) {
+                my $buf = $inputData;
+                $inputData = "";
+                foreach ( split( //, $buf ) ) {
+                    $inputData .= sprintf( '%.4b', hex($_) );
+                }
             }
+            elsif ( $inputFormat eq 'b' ) {
+
+            }
+            else {
+                die "Unsupport input format\n";
+            }
+
             $inputData = "0" x ( ( $totalInputWidth > length($inputData) ) ? ( $totalInputWidth - length($inputData) ) : 0 ) . $inputData;
             $inputData = substr( $inputData, -$totalInputWidth );
             return $inputData;
         }
-        my @inputData = split( /,/, $needTestBench );
         foreach ( 0 .. ( @inputData - 1 ) ) {
             @inputData[$_] = trunc( @inputData[$_], $totalInputWidth );
         }
@@ -1163,13 +1134,74 @@ if ($needTestBench) {
                     foreach (@inputData) {
                         $data .= substr( $_, $index, 1 );
                     }
-                    print $outputFileHandler $data . ");\n";
+                    print $outputFileHandler $data . ")\n";
                     $index += 1;
                 }
             }
         }
         $testbenchPulse *= @inputData;
+    }
+    if ( $needTestBench =~ /^sweep$/i ) {
+        my @integers;
+        print $ftbh "\n\tinteger ";
+        foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+            if ( $io->{type} =~ /input/i ) {
+                push @integers, "$io->{name}_tbInst_iter";
+            }
+        }
+        print $ftbh join( ", ", @integers ) . ";\n\n";
+        print $ftbh "\tinitial begin\n";
+        my @stack;
+        foreach my $io ( reverse @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+            if ( $io->{type} =~ /input/i ) {
+                my $iterName   = "$io->{name}_tbInst_iter";
+                my $iterUBound = ( $io->{width} <= 30 ) ? ( 1 << $io->{width} ) : ( 1 << 31 ) - 1;
+                if ( $io->{width} > 30 ) {
+                    $logger->warning("Width of signal '$io->{name}' is above 30, may cause Integer overflow in testbench simulation, auto truncated\n");
+                }
+                if ($testbenchIterMax) {
+                    if ( $iterUBound > $testbenchIterMax ) {
+                        $iterUBound = $testbenchIterMax;
+                    }
+                }
+                print $ftbh "\t" x ( @stack + 2 ) . "$io->{name} = $io->{width}'b0;\n";
+                print $ftbh "\t" x ( @stack + 2 ) . "for($iterName = 0; $iterName < $iterUBound; $iterName = $iterName + 1) begin\n";
+                @stack = ( @stack, ( $io, ) );
+            }
+        }
+        print $ftbh "\t" x ( @stack + 2 ) . "#$testbenchPulse;\n";
+        while (@stack) {
+            my $io = pop @stack;
+            print $ftbh "\t" x ( @stack + 3 ) . "$io->{name} = $io->{name} + 1;\n";
+            print $ftbh "\t" x ( @stack + 2 ) . "end\n";
+        }
+        print $ftbh "\tend\n";
+        $logger->info("Verilog testbench file '$testbenchFolderName/testbench.v' generated\n");
+        foreach ( @{ $moduleDeclarations->{$topModuleName}->{input} } ) {
+            print $outputFileHandler "V_$_ $_ GND PULSE(0V $voltage";
+            print $outputFileHandler "V $testbenchPulse$timescale 0$timescale 0$timescale $testbenchPulse$timescale ";
+            $testbenchPulse *= 2;
+            print $outputFileHandler "$testbenchPulse$timescale)\n";
+        }
 
+    }
+    elsif ( $needTestBench =~ /^(?:[0-9a-fA-F]+)(?:,[0-9a-fA-F]+)*$/i ) {
+        gen_tb( 'h', split( /,/, $needTestBench ) );
+    }
+    elsif ( $needTestBench =~ /^random$/i ) {
+        my @inputData;
+        if ( !$testbenchIterMax ) {
+            $testbenchIterMax = 1;
+        }
+        srand;
+        foreach ( 1 .. $testbenchIterMax ) {
+            my $buf = "";
+            foreach ( 1 .. $totalInputWidth ) {
+                $buf .= ( int( rand(2) ) ) ? "1" : "0";
+            }
+            push @inputData, $buf;
+        }
+        gen_tb( 'b', @inputData );
     }
     $logger->info("Pulse votage source(s) generated\n");
     print $outputFileHandler "\n\n";
