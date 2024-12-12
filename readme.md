@@ -86,7 +86,7 @@ $ perl ./src/main.pl ./examples --ignoreFiles tb.v --top top.v -o top.sp --proce
 `--process sm046005-1j.hspice`指定工艺库为`sm046005-1j.hspice`（如无指定则默认sm046005-1j.hspice），
 `--voltage 3.3`指定$V_{DD}=3.3V$（如无指定则默认$V_{DD}=3.3V$），
 `--model SC`指定门模块模型为`SC`（静态互补）（如无指定则默认SC），
-`-t=sweep`指定需要生成瞬态分析的激励源和RTL仿真激励文件（生成在\$\{inputPath\}/output/testbench/testbench.v中），生成模式为扫描所有可能输入模式，
+`-t=sweep`指定需要生成瞬态分析的激励源和RTL仿真激励文件（生成在\$\{inputPath\}/output/testbench/testbench.v中），生成模式为扫描所有可能输入模式（也可以使用-t 1A6，0x1A6 = 0b1101_0011_0，相当于指定输入a=4'b1101 b=4'b0011 cin=1'b0，跑某个特定输入下的仿真）
 `--tbIterMax 16`设定RTL仿真激励文件中每个输入信号最大仿真种类数为16，避免大模块仿真时间过长，
 `--timescale us`指定瞬态分析参数的时间单位为$\mu s$（如无指定默认为$ns$），
 `--tbStep 0.01`指定瞬态分析最大步长为$0.01\mu s$（如无指定默认为$0.01ns$），

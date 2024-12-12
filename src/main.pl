@@ -296,7 +296,7 @@ sub parseBus {
         if ( $encoding =~ /d/i ) {
             $content = sprintf( "%b", $content );
         }
-        $content = sprintf( '%0' . $digit . 'd', $content );
+        $content = "0" x ( ( $digit > length($content) ) ? ( $digit - length($content) ) : 0 ) . $content;
         $content = substr( $content, -$digit );
         return $content;
     }
@@ -1067,8 +1067,12 @@ if ($needTestBench) {
     print $ftbh "`timescale 1ns/1ps\n";
     print $ftbh "`include \"$topModuleFileName\"\n\n\n";
     print $ftbh "module test_top();\n";
+    my $totalInputWidth = 0;
     foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
         print $ftbh "\t" . ( ( $io->{type} =~ /input/i ) ? "reg " : "wire" ) . ( $io->{width} > 1 ? " [\t$io->{MSB}\t:\t$io->{LSB}\t]" : "" ) . "\t$io->{name};\n";
+        if ( $io->{type} =~ /input/i ) {
+            $totalInputWidth += $io->{width};
+        }
     }
     print $ftbh "\t$topModuleName top_inst(\n";
     my @ioPort;
@@ -1122,8 +1126,29 @@ if ($needTestBench) {
         $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
 
     }
-    elsif ( $needTestBench =~ /specificInput/i ) {
-
+    elsif ( $needTestBench =~ /[0-9a-fA-F]+/i ) {
+        my $inputData = hex($needTestBench);
+        $inputData = sprintf( "%b", $inputData );
+        $inputData = "0" x ( ( $totalInputWidth > length($inputData) ) ? ( $totalInputWidth - length($inputData) ) : 0 ) . $inputData;
+        $inputData = substr( $inputData, -$totalInputWidth );
+        my $index = 0;
+        print $ftbh "\tinitial begin\n";
+        print "$totalInputWidth\n$inputData\n";
+        foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+            if ( $io->{type} =~ /input/i ) {
+                print $ftbh "\t\t$io->{name}\t=\t$io->{width}'b" . substr( $inputData, $index, $io->{width} ) . ";\n";
+                foreach ( reverse( $io->{LSB} .. $io->{MSB} ) ) {
+                    print $outputFileHandler "V_$io->{name}_$_ $io->{name}_$_ GND " . ( substr( $inputData, $index, 1 ) ? $voltage : 0 ) . "V\n";
+                    $index += 1;
+                }
+            }
+        }
+        print $ftbh "\t\t#10;\n";
+        print $ftbh "\tend\n";
+        $logger->info("Pulse votage source(s) generated\n");
+        print $outputFileHandler "\n\n";
+        print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
+        $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
     }
     print $ftbh "endmodule";
     close $ftbh;
@@ -1181,6 +1206,7 @@ if ($needTestBench) {
 
     sub run_hspice {
         my $has_waveview : shared = 0;
+
         sub run_waveview {
             chdir "$origin_cd/$outputFolderName" or die "Cannot change directory to '$outputFolderName': $!";
             $logger->info("Running HSpice Waveview...\n");
@@ -1205,25 +1231,25 @@ if ($needTestBench) {
         if ($buf) {
             return;
         }
-        while(!-s "$outputName.tr0"){
+        while ( !-s "$outputName.tr0" ) {
             sleep(0.1);
         }
-        my @lastSize = (0,0,-s "$outputName.tr0");
-        while(1){
+        my @lastSize = ( 0, 0, -s "$outputName.tr0" );
+        while (1) {
             sleep(1);
             shift @lastSize;
-            push @lastSize,-s "$outputName.tr0";
-            if($lastSize[0] == $lastSize[1] && $lastSize[1] == $lastSize[2]){
+            push @lastSize, -s "$outputName.tr0";
+            if ( $lastSize[0] == $lastSize[1] && $lastSize[1] == $lastSize[2] ) {
                 last;
             }
         }
-        my $waveviewThread = threads->create(\&run_waveview);
+        my $waveviewThread = threads->create( \&run_waveview );
         $waveviewThread->join();
     }
 
     my $modelsimThread = threads->create( \&run_modelsim );
     sleep(1);
-    my $hspiceThread = threads->create(\&run_hspice);
+    my $hspiceThread = threads->create( \&run_hspice );
     {
         lock($has_modelsim);
         if ($has_modelsim) {
