@@ -1120,36 +1120,57 @@ if ($needTestBench) {
             $testbenchPulse *= 2;
             print $outputFileHandler "$testbenchPulse$timescale)\n";
         }
-        $logger->info("Pulse votage source(s) generated\n");
-        print $outputFileHandler "\n\n";
-        print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
-        $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
 
     }
-    elsif ( $needTestBench =~ /[0-9a-fA-F]+/i ) {
-        my $inputData = hex($needTestBench);
-        $inputData = sprintf( "%b", $inputData );
-        $inputData = "0" x ( ( $totalInputWidth > length($inputData) ) ? ( $totalInputWidth - length($inputData) ) : 0 ) . $inputData;
-        $inputData = substr( $inputData, -$totalInputWidth );
+    elsif ( $needTestBench =~ /(?:[0-9a-fA-F]+)(?:,[0-9a-fA-F]+)*/i ) {
+
+        sub trunc {
+            my $inputData       = shift;
+            my $totalInputWidth = shift;
+            $inputData = hex($inputData);
+            $inputData = sprintf( "%b", $inputData );
+            $inputData = "0" x ( ( $totalInputWidth > length($inputData) ) ? ( $totalInputWidth - length($inputData) ) : 0 ) . $inputData;
+            $inputData = substr( $inputData, -$totalInputWidth );
+            return $inputData;
+        }
+        my @inputData = split( /,/, $needTestBench );
+        foreach ( 0 .. ( @inputData - 1 ) ) {
+            @inputData[$_] = trunc( @inputData[$_], $totalInputWidth );
+        }
         my $index = 0;
         print $ftbh "\tinitial begin\n";
-        print "$totalInputWidth\n$inputData\n";
+        foreach my $data (@inputData) {
+            $index = 0;
+            foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
+                if ( $io->{type} =~ /input/i ) {
+                    print $ftbh "\t\t$io->{name}\t=\t$io->{width}'b" . substr( $data, $index, $io->{width} ) . ";\n";
+                    $index += $io->{width};
+                }
+            }
+            print $ftbh "\t\t#$testbenchPulse;\n\n";
+        }
+        print $ftbh "\tend\n";
+        $logger->info("Verilog testbench file '$testbenchFolderName/testbench.v' generated\n");
+        $index = 0;
         foreach my $io ( @{ $moduleDeclarations->{$topModuleName}->{originIO} } ) {
             if ( $io->{type} =~ /input/i ) {
-                print $ftbh "\t\t$io->{name}\t=\t$io->{width}'b" . substr( $inputData, $index, $io->{width} ) . ";\n";
                 foreach ( reverse( $io->{LSB} .. $io->{MSB} ) ) {
-                    print $outputFileHandler "V_$io->{name}_$_ $io->{name}_$_ GND " . ( substr( $inputData, $index, 1 ) ? $voltage : 0 ) . "V\n";
+                    print $outputFileHandler "V_$io->{name}_$_ $io->{name}_$_ GND PAT($voltage" . "V 0V 0$timescale 0$timescale 0$timescale $testbenchPulse$timescale b";
+                    my $data = "";
+                    foreach (@inputData) {
+                        $data .= substr( $_, $index, 1 );
+                    }
+                    print $outputFileHandler $data . ");\n";
                     $index += 1;
                 }
             }
         }
-        print $ftbh "\t\t#10;\n";
-        print $ftbh "\tend\n";
-        $logger->info("Pulse votage source(s) generated\n");
-        print $outputFileHandler "\n\n";
-        print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
-        $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
+
     }
+    $logger->info("Pulse votage source(s) generated\n");
+    print $outputFileHandler "\n\n";
+    print $outputFileHandler ".TRAN $testbenchStep$timescale $testbenchPulse$timescale\n";
+    $logger->info("Transient analysis params generated as '.TRAN $testbenchStep$timescale $testbenchPulse$timescale'\n");
     print $ftbh "endmodule";
     close $ftbh;
 
