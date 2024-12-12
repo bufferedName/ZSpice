@@ -1127,8 +1127,11 @@ if ($needTestBench) {
         sub trunc {
             my $inputData       = shift;
             my $totalInputWidth = shift;
-            $inputData = hex($inputData);
-            $inputData = sprintf( "%b", $inputData );
+            my $buf             = $inputData;
+            $inputData = "";
+            foreach ( split( //, $buf ) ) {
+                $inputData .= sprintf( '%.4b', hex($_) );
+            }
             $inputData = "0" x ( ( $totalInputWidth > length($inputData) ) ? ( $totalInputWidth - length($inputData) ) : 0 ) . $inputData;
             $inputData = substr( $inputData, -$totalInputWidth );
             return $inputData;
@@ -1165,6 +1168,7 @@ if ($needTestBench) {
                 }
             }
         }
+        $testbenchPulse *= @inputData;
 
     }
     $logger->info("Pulse votage source(s) generated\n");
