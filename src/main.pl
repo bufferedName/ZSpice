@@ -283,23 +283,23 @@ sub cropStr {
     return substr( $loggerRes, 0, $length ) . "\t...\t" . substr( $loggerRes, -$length );
 }
 
-sub parseBus {
-
-    sub to_bin {
-        my $digit    = shift;
-        my $encoding = shift;
-        my $content  = shift;
-        if ( $encoding =~ /h/i ) {
-            $content  = hex($content);
-            $encoding = "d";
-        }
-        if ( $encoding =~ /d/i ) {
-            $content = sprintf( "%b", $content );
-        }
-        $content = "0" x ( ( $digit > length($content) ) ? ( $digit - length($content) ) : 0 ) . $content;
-        $content = substr( $content, -$digit );
-        return $content;
+sub to_bin {
+    my $digit    = shift;
+    my $encoding = shift;
+    my $content  = shift;
+    if ( $encoding =~ /h/i ) {
+        $content  = hex($content);
+        $encoding = "d";
     }
+    if ( $encoding =~ /d/i ) {
+        $content = sprintf( "%b", $content );
+    }
+    $content = "0" x ( ( $digit > length($content) ) ? ( $digit - length($content) ) : 0 ) . $content;
+    $content = substr( $content, -$digit );
+    return $content;
+}
+
+sub parseBus {
 
     my $fullname  = shift;
     my $linecount = shift;
@@ -577,12 +577,12 @@ foreach my $filename (@inputFileNames) {
             $buses = $moduleDeclarations->{$name}->{bus};
 
             # module instance array seperation
-            my @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\[\s*\d+\s*:\s*\d+\s*\]\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*\s*\)\s*;)/g;
+            my @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\[\s*\d+\s*:\s*\d+\s*\]\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\)))*\s*\)\s*;)/g;
             foreach my $instance (@instances) {
                 my $res            = "";
                 my $originInstance = $instance;
                 $instance =~ s/\n//g;
-                $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\[\s*(?<msb>\d+)\s*:\s*(?<lsb>\d+)\s*\]\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*)\s*\)\s*;/;
+                $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\[\s*(?<msb>\d+)\s*:\s*(?<lsb>\d+)\s*\]\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\)))*)\s*\)\s*;/;
                 my $msb          = $+{msb};
                 my $lsb          = $+{lsb};
                 my $width        = $msb - $lsb + 1;
@@ -594,15 +594,16 @@ foreach my $filename (@inputFileNames) {
                 if ( !exists $moduleDeclarations->{$moduleName} ) {
                     die "Undefined module '$moduleName' at '$filename' in expr '$instance'\n";
                 }
-                my @ios = $io =~ /(\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))/g;
+                my @ios = $io =~ /(\.(?:[a-zA-Z]\w*)\s*\((?:(?:\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+))\s*\))/g;
                 my %ioMap;
                 foreach my $io (@ios) {
-                    $io =~ /\.(?<ioName>[a-zA-Z]\w*)\s*\((?<ioPort>(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?))\s*\)/;
+                    $io =~ /\.(?<ioName>[a-zA-Z]\w*)\s*\((?<ioPort>(?:\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+))\s*\)/;
                     my $ioName = $+{ioName};
                     my $ioPort = $+{ioPort};
-                    $ioPort =~ /^\s*(?<name>[a-zA-Z]\w*)(?:\s*(?:\[\s*(?<msb>\d+)\s*:\s*(?<lsb>\d+)\s*\]|\[\s*(?<index>\d+)\s*\]))?\s*$/;
+                    $ioPort =~ /^\s*(?:(?<constant>\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)|(?:(?<name>[a-zA-Z]\w*)(?:\s*(?:\[\s*(?<msb>\d+)\s*:\s*(?<lsb>\d+)\s*\]|\[\s*(?<index>\d+)\s*\]))?))\s*$/;
                     my $portWidth;
                     my $lsb = $+{lsb};
+                    my @constants;
                     if ( defined $+{msb} ) {
                         $portWidth = $+{msb} - $+{lsb} + 1;
                         $lsb       = $+{lsb};
@@ -610,6 +611,13 @@ foreach my $filename (@inputFileNames) {
                     elsif ( defined $+{index} ) {
                         $portWidth = 1;
                         $lsb       = $+{index};
+                    }
+                    elsif ( defined $+{constant} ) {
+                        my $content = $+{constant};
+                        $content =~ /(?<portWidth>\d+)\s*'(?<encoding>b|B|h|H|d|D)\s*(?<content>[0-9a-fA-F]+)/;
+                        $portWidth = $+{portWidth};
+                        $lsb       = 0;
+                        @constants = reverse( split( //, to_bin( $portWidth, $+{encoding}, $+{content} ) ) );
                     }
                     else {
                         if ( exists $buses->{$ioPort} ) {
@@ -630,7 +638,12 @@ foreach my $filename (@inputFileNames) {
                     if ( $portWidth != $width * $modulePortWidth ) {
                         die "Ambiguous bus-width of net '$ioPort' declared at '$inputFolderName/$filename' in expr '$instance'\n";
                     }
-                    $ioMap{$ioName} = { portName => $+{name}, LSB => $lsb, width => $modulePortWidth };
+                    if ( defined $+{name} ) {
+                        $ioMap{$ioName} = { portName => $+{name}, LSB => $lsb, width => $modulePortWidth };
+                    }
+                    else {
+                        $ioMap{$ioName} = { portName => "constant", LSB => $lsb, width => $modulePortWidth, data => \@constants };
+                    }
                 }
                 foreach my $index ( $lsb .. $msb ) {
                     $res .= $blank . $moduleName . " $instanceName" . "_$index(";
@@ -642,7 +655,16 @@ foreach my $filename (@inputFileNames) {
                         else {
                             $notFirst = 1;
                         }
-                        $res .= ".$_(" . $ioMap{$_}->{portName} . "[" . ( $ioMap{$_}->{LSB} + ( $index - $lsb + 1 ) * $ioMap{$_}->{width} - 1 ) . ":" . ( $ioMap{$_}->{LSB} + ( $index - $lsb ) * $ioMap{$_}->{width} ) . "])";
+                        if ( $ioMap{$_}->{portName} eq "constant" ) {
+                            $res .= ".$_(" . $ioMap{$_}->{width} . "'b";
+                            for ( my $i = ( ( $index + 1 ) * $ioMap{$_}->{width} - 1 ) ; $i >= ( $index * $ioMap{$_}->{width} ) ; $i-- ) {
+                                $res .= $ioMap{$_}->{data}->[$i];
+                            }
+                            $res .= ")";
+                        }
+                        else {
+                            $res .= ".$_(" . $ioMap{$_}->{portName} . "[" . ( $ioMap{$_}->{LSB} + ( $index - $lsb + 1 ) * $ioMap{$_}->{width} - 1 ) . ":" . ( $ioMap{$_}->{LSB} + ( $index - $lsb ) * $ioMap{$_}->{width} ) . "])";
+                        }
                     }
                     $res .= ");\n";
                 }
@@ -655,12 +677,12 @@ foreach my $filename (@inputFileNames) {
             }
 
             # module instance bus seperation
-            @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*\s*\)\s*;)/g;
+            @instances = $content =~ /(\s*[a-zA-Z]\w*\s*[a-zA-Z]\w*\s*\(\s*(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\)))*\s*\)\s*;)/g;
             foreach my $instance (@instances) {
                 my $res            = "";
                 my $originInstance = $instance;
                 $instance =~ s/\n//g;
-                $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))*\s*\)))*)\s*\)\s*;/;
+                $instance =~ /(?<blank>\s*)(?<moduleName>[a-zA-Z]\w*)\s*(?<instanceName>[a-zA-Z]\w*)\s*\(\s*(?<io>(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\))(?:\s*,\s*(?:\.[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\])?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+)\s*\)))*)\s*\)\s*;/;
                 my $blank        = $+{blank};
                 my $moduleName   = $+{moduleName};
                 my $instanceName = $+{instanceName};
@@ -669,11 +691,11 @@ foreach my $filename (@inputFileNames) {
                 if ( !exists $moduleDeclarations->{$moduleName} ) {
                     die "Undefined module '$moduleName' at '$filename' in expr '$instance'\n";
                 }
-                my @ios = $io =~ /(\.[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?\s*\))/g;
+                my @ios = $io =~ /(\.(?:[a-zA-Z]\w*)\s*\((?:(?:\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+))\s*\))/g;
                 $res = "$blank$moduleName $instanceName(";
                 my $notFirst = 0;
                 foreach $io (@ios) {
-                    $io =~ /\.(?<ioName>[a-zA-Z]\w*)\s*\((?<ioPort>(\s*[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?))\s*\)/;
+                    $io =~ /\.(?<ioName>[a-zA-Z]\w*)\s*\((?<ioPort>(?:\s*(?:[a-zA-Z]\w*\s*(?:\s*(?:\[\s*\d+\s*:\s*\d+\s*\]|\[\s*\d+\s*\]))?)|\d+\s*'(?:b|B|h|H|d|D)\s*[0-9a-fA-F]+))\s*\)/;
                     my $ioName = $+{ioName};
                     my $ioPort = $+{ioPort};
                     if ($notFirst) {
@@ -993,7 +1015,7 @@ foreach (@moduleNames) {
         $logger->debug( "Expr '$2' assign to wire '$1' parsed as '" . cropStr( $assign, 15 ) . "'\n" );
         $subckt .= $assign;
     }
-    while ( $content =~ /(?<moduleName>[a-zA-Z]\w*)\s+(?<instanceName>[a-zA-Z]\w*)\s*\((?<ios>\s*\.\s*[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*\)(?:\s*,\s*\.\s*[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*\))*)\s*\)\s*;/gs ) {    #module instance
+    while ( $content =~ /(?<moduleName>[a-zA-Z]\w*)\s+(?<instanceName>[a-zA-Z]\w*)\s*\((?<ios>\s*\.\s*[a-zA-Z]\w*\s*\(\s*[a-zA-Z]\w*\s*\)(?:\s*,\s*\.\s*[a-zA-Z]\w*\s*\(\s*(?:[a-zA-Z]\w*(?:\s*\[\s*\d+\s*\]|\s*\[\s*\d+\s*:\s*\d+\s*\])?|1\s*'b\s*1|1\s*'b\s*0)\s*\))*)\s*\)\s*;/gs ) {    #module instance
         my $name         = $+{moduleName};
         my $instanceName = $+{instanceName};
         my $io           = $+{ios};
@@ -1002,8 +1024,18 @@ foreach (@moduleNames) {
             $instance .= "X$instanceName$subcktCount ";
             $subcktCount += 1;
             foreach ( @{ $moduleDeclarations->{$name}->{input} } ) {
-                if ( $io =~ /\.\s*$_\(\s*(\w+)\s*\)/ ) {
-                    $instance .= "$1 ";
+                if ( $io =~ /\.\s*$_\(\s*(\w+|1\s*'b\s*1|1\s*'b\s*0)\s*\)/ ) {
+                    my $ioName = $1;
+                    if ( $ioName =~ /1\s*'b\s*1/ ) {
+                        $instance .= "VDD ";
+                    }
+                    elsif ( $ioName =~ /1\s*'b\s*0/ ) {
+                        $instance .= "GND ";
+                    }
+                    else {
+                        $instance .= "$ioName ";
+                    }
+
                 }
                 else {
                     my $nodeCount = TreeNode::get_tag();

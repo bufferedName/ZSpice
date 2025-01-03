@@ -9,4 +9,5 @@
 .vscode/
 /src/deleteKey.reg
 VLSI2024/
+test/
 /src/lib/model/SC/MUX.sp
